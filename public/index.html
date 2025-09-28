@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asterisk Web AMI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Asterisk Web AMI</h1>
+            <p>Manage your Asterisk PBX through a web interface</p>
+        </header>
+
+        <main class="main-content">
+            <section class="credentials-section">
+                <h2>Connection Details</h2>
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" value="abdalla">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" value="1234">
+                </div>
+            </section>
+
+            <section class="actions-section">
+                <h2>Actions</h2>
+                <div class="button-group">
+                    <button id="loginBtn" class="btn btn-primary">Login</button>
+                    <button id="pingBtn" class="btn btn-secondary">Ping</button>
+                </div>
+                
+                <div class="command-group">
+                    <label for="command">Command:</label>
+                    <input type="text" id="command" placeholder="e.g. core show channels">
+                    <button id="sendBtn" class="btn btn-success">Send Command</button>
+                </div>
+            </section>
+
+            <section class="output-section">
+                <h2>Output</h2>
+                <div id="output" class="output-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
