@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"webami/actions"
 )
 
@@ -16,16 +17,6 @@ type Request struct {
 }
 
 func handleAMI(w http.ResponseWriter, r *http.Request) {
-	// Enable CORS
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -38,19 +29,27 @@ func handleAMI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Username == "" || req.Secret == "" {
-		http.Error(w, "Username and secret are required", http.StatusBadRequest)
-		return
-	}
-
 	resp, err := actions.SendJSONAction(req.Action, req.Command, req.Username, req.Secret)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	var output string
+	if req.Command != "" {
+		output = fmt.Sprintf("🚀 Command: %s\n%s\n%s",
+			req.Command,
+			strings.Repeat("=", 50),
+			resp)
+	} else {
+		output = fmt.Sprintf("🔧 Action: %s\n%s\n%s",
+			req.Action,
+			strings.Repeat("=", 50),
+			resp)
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(resp))
+	w.Write([]byte(output))
 }
 
 func main() {

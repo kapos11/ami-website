@@ -1,56 +1,78 @@
 package actions
 
 import (
+	"bufio"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
+	"net"
 	"strings"
 	"time"
 )
 
-var BaseURL = "http://127.0.0.1:8088/asterisk/manager"
+var AMIHost = "127.0.0.1:5038"
 
-var client = &http.Client{
-	Timeout: 30 * time.Second,
-}
-
-// SendAction sends a request to Asterisk Web AMI
-func SendAction(data url.Values) (string, error) {
-	req, err := http.NewRequest("POST", BaseURL, strings.NewReader(data.Encode()))
+func SendAMIAction(action, command, username, secret string) (string, error) {
+	conn, err := net.DialTimeout("tcp", AMIHost, 5*time.Second)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %v", err)
+		return "", fmt.Errorf("failed to connect to AMI: %v", err)
 	}
+	defer conn.Close()
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to Asterisk: %v", err)
-	}
-	defer resp.Body.Close()
+	var fullResponse strings.Builder
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %v", err)
-	}
-
-	return string(body), nil
-}
-
-// SendJSONAction converts JSON data to form values and sends it
-func SendJSONAction(action, command, username, secret string) (string, error) {
-	data := url.Values{}
-	data.Set("action", action)
-	if command != "" {
-		data.Set("command", command)
-	}
-	data.Set("username", username)
-	data.Set("secret", secret)
-
-	resp, err := SendAction(data)
-	if err != nil {
+	loginCmd := fmt.Sprintf("Action: Login\r\nUsername: %s\r\nSecret: %s\r\n\r\n", username, secret)
+	if _, err := writer.WriteString(loginCmd); err != nil {
 		return "", err
 	}
-	return resp, nil
+	writer.Flush()
+
+	loginResp, _ := readAMIResponse(reader)
+	fullResponse.WriteString(loginResp)
+
+	var actionCmd string
+	if command != "" {
+		actionCmd = fmt.Sprintf("Action: %s\r\nCommand: %s\r\n\r\n", action, command)
+	} else {
+		actionCmd = fmt.Sprintf("Action: %s\r\n\r\n", action)
+	}
+
+	if _, err := writer.WriteString(actionCmd); err != nil {
+		return fullResponse.String(), err
+	}
+	writer.Flush()
+
+	// قراءة رد الأمر الرئيسي
+	actionResp, err := readAMIResponse(reader)
+	if err != nil {
+		return fullResponse.String(), err
+	}
+
+	fullResponse.WriteString(actionResp)
+
+	return fullResponse.String(), nil
+}
+
+func readAMIResponse(reader *bufio.Reader) (string, error) {
+	var response strings.Builder
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return response.String(), err
+		}
+		response.WriteString(line)
+		if strings.TrimSpace(line) == "" {
+			break
+		}
+	}
+	return response.String(), nil
+}
+
+func ParseResponse(amiResponse string) string {
+	return amiResponse
+}
+
+func SendJSONAction(action, command, username, secret string) (string, error) {
+	return SendAMIAction(action, command, username, secret)
 }
